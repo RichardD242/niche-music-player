@@ -16,3 +16,7 @@ i would also love to add something that you can share like share playlists and a
 that could be cool
 maybe later i could add a professional side to it with a landing page and so on but right now this music player needs to be working 
 i will start cooking
+
+--- ok update for today
+
+today i will really start doing this project because i derailed again
