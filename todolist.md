@@ -59,3 +59,11 @@ pellegrino player - i think i will use this
 st.niche player
 melon player
 orange player
+
+to add:
+
+- search bar or something or like inside youtube in it that automatically copies link we could pull it from the url the link after
+
+- sharing json export import would be cool
+
+- maybe i should add lyrics but thats too much with api and stuff maybe its better i go to sleep now
