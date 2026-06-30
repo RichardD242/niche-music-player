@@ -52,3 +52,10 @@ i should add a how to use section somewhere home or something or nah i will just
 readme done and everything else
 
 i should add already ready made playlist or something or what could be cool so that people can copy code or something for a full playlist so they dont have to search everything and put links
+
+name suggestions and ideas:
+
+pellegrino player - i think i will use this
+st.niche player
+melon player
+orange player

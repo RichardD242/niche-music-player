@@ -1,4 +1,4 @@
-# Niche music player
+# Pellegrino Player
 
 a niche music player that turns youtube links into cool vinyl music disks
 
