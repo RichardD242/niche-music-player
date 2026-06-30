@@ -1,32 +1,41 @@
-# React + TypeScript + Vite
+# Niche music player
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+a niche music player that turns youtube links into cool vinyl music disks
 
-Currently, two official plugins are available:
+## features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- yt link extractor
+- the spinning disc
+- fullscreen mode
+- darkmode lightmode and other settings
 
-## React Compiler
+## tech stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- react 19 + typescript
+- vite 8
+- tailwind css
+- lucide icons
 
-## Expanding the Oxlint configuration
+everything runs through client side (for storage it uses localstorage)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## how it works / how to use it
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+### adding a track
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+you paste a youtube link into the play section and click the plus button
+
+### cover of music disk
+
+there is no api call for metadata. the cover that is on the disk is the youtube thumbnail. my tip: when searching your music on youtube just add **album cover** at the end so you get the cleanest cover on the disk. 
+
+### premade playlist
+
+i will maybe add full playlist later but there are alredy some songs that you can listen to (janice stfu and cant tell me nothing)
+
+### playback
+
+playback happens through a hidden youtube iframe embed, not official youtube api (so far)
+
+### storage
+
+tracks and settings are stored in the browsers localstorage so everything local

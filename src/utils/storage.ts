@@ -15,7 +15,7 @@ export const loadTracks = (): Track[] => {
                 id: 'default-1',
                 youtubeId: 'Vcljvd4Ef_o',
                 title: 'Cant tell me nothing',
-                artist: 'Kanye West'
+                description: 'Kanye West'
             }
         ];
     }
@@ -28,7 +28,7 @@ export const saveTracks = (tracks: Track[]): void => {
 
 export const loadSettings = (): PlayerSettings => {
     const saved = localStorage.getItem('vinyl_settings');
-    return saved ? JSON.parse(saved) : { rotationSpeed: 'normal', theme: 'dark' };
+    return saved ? JSON.parse(saved) : { rotationSpeed: 'normal', theme: 'dark', volume: 100 };
 };
 
 export const saveSettings = (settings: PlayerSettings): void => {

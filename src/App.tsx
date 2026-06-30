@@ -4,7 +4,23 @@ import { loadTracks, saveTracks, loadSettings, saveSettings, extractYoutubeId } 
 import { VinylCanvas } from './components/VinylCanvas';
 import { SettingsPanel } from './components/SettingsPanel';
 import { YoutubeEngine } from './components/YoutubeEngine';
-import { Play, Pause, SkipForward, SkipBack, Plus, Music, Trash2, Settings } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
+  Plus,
+  Music,
+  Trash2,
+  Settings,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Check,
+  X,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>(loadTracks);
@@ -13,6 +29,10 @@ export default function App() {
   const [settings, setSettings] = useState<PlayerSettings>(loadSettings);
   const [inputUrl, setInputUrl] = useState<string>('');
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editDescription, setEditDescription] = useState<string>('');
 
   useEffect(() => {
     saveTracks(tracks);
@@ -54,7 +74,7 @@ export default function App() {
       id: `track-${Date.now()}`,
       youtubeId: ytId,
       title: `track ${tracks.length + 1}`,
-      artist: 'from a youtube link'
+      description: 'from a youtube link',
     };
 
     setTracks([...tracks, newTrack]);
@@ -82,21 +102,118 @@ export default function App() {
     localStorage.removeItem('vinyl_tracks');
   };
 
+  const handleStartEdit = (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    setEditingId(track.id);
+    setEditTitle(track.title);
+    setEditDescription(track.description);
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTracks(
+      tracks.map((t) =>
+        t.id === editingId
+          ? { ...t, title: editTitle.trim() || t.title, description: editDescription.trim() }
+          : t
+      )
+    );
+    setEditingId(null);
+  };
+
+  const transportControls = (
+    <div className="flex items-center gap-6 rounded-full border border-neutral-200 dark:border-neutral-800 px-6 py-3">
+      <button
+        onClick={handlePrev}
+        disabled={tracks.length <= 1}
+        className="text-neutral-400 hover:text-black dark:hover:text-white transition disabled:opacity-30"
+      >
+        <SkipBack size={18} />
+      </button>
+
+      <button
+        onClick={handlePlayPause}
+        disabled={tracks.length === 0}
+        className="w-11 h-11 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center disabled:opacity-30 transition"
+      >
+        {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="ml-0.5" fill="currentColor" />}
+      </button>
+
+      <button
+        onClick={handleNext}
+        disabled={tracks.length <= 1}
+        className="text-neutral-400 hover:text-black dark:hover:text-white transition disabled:opacity-30"
+      >
+        <SkipForward size={18} />
+      </button>
+    </div>
+  );
+
+  const volumeControl = (
+    <div className="flex items-center gap-3 rounded-full border border-neutral-200 dark:border-neutral-800 px-5 py-3">
+      {settings.volume === 0 ? (
+        <VolumeX size={18} className="text-neutral-400 shrink-0" />
+      ) : (
+        <Volume2 size={18} className="text-neutral-400 shrink-0" />
+      )}
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={settings.volume}
+        onChange={(e) => setSettings({ ...settings, volume: Number(e.target.value) })}
+        className="w-40 accent-black dark:accent-white"
+      />
+    </div>
+  );
+
   return (
     <div className="w-screen h-screen flex flex-col md:flex-row bg-white dark:bg-black text-black dark:text-white transition-colors">
       {currentTrack && (
         <YoutubeEngine
           youtubeId={currentTrack.youtubeId}
           isPlaying={isPlaying}
+          volume={settings.volume}
           onTrackEnd={handleNext}
         />
       )}
 
-      <div className="w-full md:w-1/2 h-1/2 md:h-full">
-        <VinylCanvas track={currentTrack} isPlaying={isPlaying} settings={settings} />
+      <div
+        className={`relative h-1/2 md:h-full transition-all duration-700 ease-in-out ${
+          isFullscreen ? 'w-full' : 'w-full md:w-1/2'
+        }`}
+      >
+        <button
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white flex items-center justify-center transition"
+        >
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
+
+        <VinylCanvas
+          track={currentTrack}
+          isPlaying={isPlaying}
+          settings={settings}
+          isFullscreen={isFullscreen}
+          controls={
+            <div className="flex flex-col items-start gap-4">
+              {transportControls}
+              {volumeControl}
+            </div>
+          }
+        />
       </div>
 
-      <div className="w-full md:w-1/2 h-1/2 md:h-full relative flex flex-col border-t md:border-t-0 md:border-l border-neutral-200 dark:border-neutral-900">
+      <div
+        className={`relative flex flex-col border-t md:border-t-0 md:border-l border-neutral-200 dark:border-neutral-900 transition-all duration-700 ease-in-out overflow-hidden ${
+          isFullscreen ? 'w-0 h-0 md:h-full opacity-0' : 'w-full md:w-1/2 h-1/2 md:h-full opacity-100'
+        }`}
+      >
         {showSettings && (
           <div className="fixed inset-0 z-10" onClick={() => setShowSettings(false)} />
         )}
@@ -143,57 +260,72 @@ export default function App() {
             {tracks.map((track, idx) => (
               <div
                 key={track.id}
-                onClick={() => { setCurrentIndex(idx); setIsPlaying(true); }}
+                onClick={() => {
+                  if (editingId === track.id) return;
+                  setCurrentIndex(idx);
+                  setIsPlaying(true);
+                }}
                 className={`group flex items-center justify-between rounded-full px-4 py-2.5 text-sm cursor-pointer transition ${
                   idx === currentIndex
                     ? 'bg-black text-white dark:bg-white dark:text-black'
                     : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900'
                 }`}
               >
-                <div className="flex items-center gap-3 truncate">
-                  <Music size={14} className={idx === currentIndex ? '' : 'text-neutral-400'} />
-                  <span className="truncate">{track.title}</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveTrack(track.id, idx);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 transition"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {editingId === track.id ? (
+                  <form
+                    onClick={(e) => e.stopPropagation()}
+                    onSubmit={handleSaveEdit}
+                    className="flex-1 flex items-center gap-2 rounded-full bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 px-3 py-1.5"
+                  >
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="title"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
+                    />
+                    <input
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="description"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
+                    />
+                    <button type="submit" className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
+                      <Check size={14} />
+                    </button>
+                    <button type="button" onClick={handleCancelEdit} className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
+                      <X size={14} />
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 truncate">
+                      <Music size={14} className={idx === currentIndex ? '' : 'text-neutral-400'} />
+                      <span className="truncate">{track.title}</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button onClick={(e) => handleStartEdit(e, track)} className="p-1">
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveTrack(track.id, idx);
+                        }}
+                        className="p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex justify-center pb-16 pt-6">
-          <div className="flex items-center gap-6 rounded-full border border-neutral-200 dark:border-neutral-800 px-6 py-3">
-            <button
-              onClick={handlePrev}
-              disabled={tracks.length <= 1}
-              className="text-neutral-400 hover:text-black dark:hover:text-white transition disabled:opacity-30"
-            >
-              <SkipBack size={18} />
-            </button>
-
-            <button
-              onClick={handlePlayPause}
-              disabled={tracks.length === 0}
-              className="w-11 h-11 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center disabled:opacity-30 transition"
-            >
-              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="ml-0.5" fill="currentColor" />}
-            </button>
-
-            <button
-              onClick={handleNext}
-              disabled={tracks.length <= 1}
-              className="text-neutral-400 hover:text-black dark:hover:text-white transition disabled:opacity-30"
-            >
-              <SkipForward size={18} />
-            </button>
-          </div>
+        <div className="flex flex-col items-center gap-3 pb-16 pt-6">
+          {transportControls}
+          {volumeControl}
         </div>
       </div>
     </div>
