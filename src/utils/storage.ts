@@ -28,7 +28,7 @@ export const saveTracks = (tracks: Track[]): void => {
 
 export const loadSettings = (): PlayerSettings => {
     const saved = localStorage.getItem('vinyl_settings');
-    return saved ? JSON.parse(saved) : { rotationSpeed: 'normal', vinylStyle: 'classic' };
+    return saved ? JSON.parse(saved) : { rotationSpeed: 'normal', theme: 'dark' };
 };
 
 export const saveSettings = (settings: PlayerSettings): void => {

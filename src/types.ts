@@ -7,7 +7,7 @@ export interface Track {
 
 export interface PlayerSettings {
     rotationSpeed: 'slow' | 'normal' | 'fast';
-    vinylStyle: 'classic' | 'matte';
+    theme: 'dark' | 'light';
 }
 
 export interface PlayerState {

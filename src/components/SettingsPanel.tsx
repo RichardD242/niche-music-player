@@ -8,20 +8,37 @@ interface SettingsPanelProps {
 
 export const SettingsPanel = ({ settings, onUpdateSettings, onClearLibrary }: SettingsPanelProps) => {
   return (
-    <div className="mt-8 pt-6 border-t border-zinc-800 space-y-4">
-      <h3 className="text-sm font-semibold tracking-wider text-zinc-400 uppercase">Configuration</h3>
+    <div className="absolute right-6 top-16 w-72 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-black p-5 space-y-5 shadow-2xl z-20">
+      <div className="flex items-center justify-between">
+        <span className="text-xs tracking-widest text-neutral-400">appearance</span>
+        <div className="flex items-center gap-1 rounded-full border border-neutral-200 dark:border-neutral-800 p-1">
+          {(['dark', 'light'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => onUpdateSettings({ ...settings, theme: mode })}
+              className={`px-3 py-1 rounded-full text-xs transition ${
+                settings.theme === mode
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-neutral-400'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-zinc-400">Turntable Speed</span>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs tracking-widest text-neutral-400">spin speed</span>
+        <div className="flex items-center gap-1 rounded-full border border-neutral-200 dark:border-neutral-800 p-1">
           {(['slow', 'normal', 'fast'] as const).map((speed) => (
             <button
               key={speed}
               onClick={() => onUpdateSettings({ ...settings, rotationSpeed: speed })}
-              className={`px-3 py-1 border text-xs capitalize transition ${
+              className={`px-3 py-1 rounded-full text-xs transition ${
                 settings.rotationSpeed === speed
-                  ? 'border-white text-white bg-zinc-900'
-                  : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-neutral-400'
               }`}
             >
               {speed}
@@ -30,33 +47,12 @@ export const SettingsPanel = ({ settings, onUpdateSettings, onClearLibrary }: Se
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-zinc-400">Vinyl Finish</span>
-        <div className="flex gap-2">
-          {(['classic', 'matte'] as const).map((style) => (
-            <button
-              key={style}
-              onClick={() => onUpdateSettings({ ...settings, vinylStyle: style })}
-              className={`px-3 py-1 border text-xs capitalize transition ${
-                settings.vinylStyle === style
-                  ? 'border-white text-white bg-zinc-900'
-                  : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'
-              }`}
-            >
-              {style}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="pt-2">
-        <button
-          onClick={onClearLibrary}
-          className="w-full py-2 border border-red-900/40 hover:border-red-600 text-red-500 text-xs transition"
-        >
-          Reset Library Cache
-        </button>
-      </div>
+      <button
+        onClick={onClearLibrary}
+        className="w-full py-2.5 rounded-full border border-neutral-200 dark:border-neutral-800 text-sm text-neutral-500 hover:text-black dark:hover:text-white transition"
+      >
+        clear all the tracks
+      </button>
     </div>
   );
 };
