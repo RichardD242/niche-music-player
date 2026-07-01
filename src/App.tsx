@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Track, PlayerSettings } from './types';
 import { loadTracks, saveTracks, loadSettings, saveSettings, extractYoutubeId } from './utils/storage';
+import { extractColors } from './utils/colors';
 import { VinylCanvas } from './components/VinylCanvas';
 import { SettingsPanel } from './components/SettingsPanel';
 import { YoutubeEngine } from './components/YoutubeEngine';
@@ -20,6 +21,9 @@ import {
   X,
   Volume2,
   VolumeX,
+  Download,
+  Upload,
+  LayoutGrid,
 } from 'lucide-react';
 
 export default function App() {
@@ -29,10 +33,14 @@ export default function App() {
   const [settings, setSettings] = useState<PlayerSettings>(loadSettings);
   const [inputUrl, setInputUrl] = useState<string>('');
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showCrate, setShowCrate] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState<string>('');
   const [editDescription, setEditDescription] = useState<string>('');
+  const [ambientColors, setAmbientColors] = useState<string[]>([]);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     saveTracks(tracks);
@@ -48,8 +56,17 @@ export default function App() {
 
   const currentTrack = tracks[currentIndex];
 
+  useEffect(() => {
+    if (!settings.ambientColor || !currentTrack) {
+      setAmbientColors([]);
+      return;
+    }
+    extractColors(`https://img.youtube.com/vi/${currentTrack.youtubeId}/mqdefault.jpg`)
+      .then(setAmbientColors);
+  }, [currentTrack, settings.ambientColor]);
+
   const handlePlayPause = () => {
-    if (tracks.length > 0) setIsPlaying(!isPlaying);
+    if (tracks.length > 0) setIsPlaying((prev) => !prev);
   };
 
   const handleNext = () => {
@@ -61,6 +78,31 @@ export default function App() {
     if (tracks.length === 0) return;
     setCurrentIndex((prev) => (prev - 1 + tracks.length) % tracks.length);
   };
+
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowRight':
+          handleNext();
+          break;
+        case 'ArrowLeft':
+          handlePrev();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [isPlaying, tracks, currentIndex]);
 
   const handleAddTrack = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +142,38 @@ export default function App() {
     setCurrentIndex(0);
     setIsPlaying(false);
     localStorage.removeItem('vinyl_tracks');
+  };
+
+  const handleExportPlaylist = () => {
+    if (tracks.length === 0) return;
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(tracks, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', 'vinyl_playlist.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleImportPlaylist = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], 'UTF-8');
+      fileReader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (Array.isArray(parsed)) {
+            setTracks(parsed);
+            setCurrentIndex(0);
+            setIsPlaying(false);
+          } else {
+            alert('Wrong file format');
+          }
+        } catch {
+          alert('Error reading file');
+        }
+      };
+    }
   };
 
   const handleStartEdit = (e: React.MouseEvent, track: Track) => {
@@ -174,6 +248,15 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen flex flex-col md:flex-row bg-white dark:bg-black text-black dark:text-white transition-colors">
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImportPlaylist}
+        accept=".json"
+        className="hidden"
+      />
+
       {currentTrack && (
         <YoutubeEngine
           youtubeId={currentTrack.youtubeId}
@@ -188,6 +271,30 @@ export default function App() {
           isFullscreen ? 'w-full' : 'w-full md:w-1/2'
         }`}
       >
+        {settings.ambientColor && ambientColors.length > 0 && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {ambientColors.map((color, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  backgroundColor: color,
+                  filter: settings.ambientBlur ? 'blur(100px)' : 'none',
+                  opacity: 0.6,
+                  mixBlendMode: 'screen',
+                  width: ['65%', '60%', '70%', '60%'][i],
+                  height: ['65%', '60%', '70%', '60%'][i],
+                  top: ['5%', '35%', '20%', '45%'][i],
+                  left: ['5%', '30%', '40%', '5%'][i],
+                  animation: settings.ambientAnimation
+                    ? `ambientDrift${i} ${[18, 24, 20, 26][i]}s ease-in-out infinite alternate`
+                    : 'none',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         <button
           onClick={() => setIsFullscreen(!isFullscreen)}
           className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white flex items-center justify-center transition"
@@ -214,13 +321,26 @@ export default function App() {
           isFullscreen ? 'w-0 h-0 md:h-full opacity-0' : 'w-full md:w-1/2 h-1/2 md:h-full opacity-100'
         }`}
       >
-        {showSettings && (
-          <div className="fixed inset-0 z-10" onClick={() => setShowSettings(false)} />
+        {(showSettings || showCrate) && (
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => { setShowSettings(false); setShowCrate(false); }}
+          />
         )}
 
-        <div className="flex justify-end p-6">
+        <div className="flex justify-end gap-2 p-6">
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => { setShowCrate(!showCrate); setShowSettings(false); }}
+            className={`relative z-20 w-10 h-10 rounded-full border flex items-center justify-center transition ${
+              showCrate
+                ? 'border-black dark:border-white'
+                : 'border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            onClick={() => { setShowSettings(!showSettings); setShowCrate(false); }}
             className={`relative z-20 w-10 h-10 rounded-full border flex items-center justify-center transition ${
               showSettings
                 ? 'border-black dark:border-white'
@@ -237,8 +357,54 @@ export default function App() {
           <SettingsPanel settings={settings} onUpdateSettings={setSettings} onClearLibrary={handleClearLibrary} />
         )}
 
+        {showCrate && (
+          <div className="absolute inset-x-0 top-[73px] bottom-0 z-20 bg-white dark:bg-black overflow-y-auto">
+            <div className="grid grid-cols-3 gap-px bg-neutral-100 dark:bg-neutral-900">
+              {tracks.map((track, idx) => (
+                <button
+                  key={track.id}
+                  onClick={() => { setCurrentIndex(idx); setIsPlaying(true); setShowCrate(false); }}
+                  className="relative aspect-square overflow-hidden bg-neutral-200 dark:bg-neutral-800 group"
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${track.youtubeId}/mqdefault.jpg`}
+                    alt={track.title}
+                    className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = `https://img.youtube.com/vi/${track.youtubeId}/hqdefault.jpg`;
+                    }}
+                  />
+                  {idx === currentIndex && (
+                    <div className="absolute inset-0 ring-2 ring-inset ring-black dark:ring-white" />
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition duration-300" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col px-8 pt-8 overflow-y-auto">
-          <span className="text-xs tracking-widest text-neutral-400">play section</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs tracking-widest text-neutral-400">play section</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleExportPlaylist}
+                disabled={tracks.length === 0}
+                title="export playlist"
+                className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white flex items-center justify-center transition disabled:opacity-30"
+              >
+                <Download size={14} />
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="import playlist"
+                className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white flex items-center justify-center transition"
+              >
+                <Upload size={14} />
+              </button>
+            </div>
+          </div>
 
           <form onSubmit={handleAddTrack} className="mt-4 flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-800 p-1.5">
             <input

@@ -6,9 +6,12 @@ export interface Track {
 }
 
 export interface PlayerSettings {
-    rotationSpeed: 'slow' | 'normal' | 'fast';
+    rotationSpeed: 'perfect slow' | 'slow' | 'normal' | 'fast';
     theme: 'dark' | 'light';
     volume: number;
+    ambientColor: boolean;
+    ambientBlur: boolean;
+    ambientAnimation: boolean;
 }
 
 export interface PlayerState {

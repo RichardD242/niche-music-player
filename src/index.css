@@ -13,3 +13,23 @@ body {
     transform: rotate(360deg);
   }
 }
+
+@keyframes ambientDrift0 {
+  0% { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(8%, 6%) scale(1.1); }
+}
+
+@keyframes ambientDrift1 {
+  0% { transform: translate(0%, 0%) scale(1.05); }
+  100% { transform: translate(-7%, 9%) scale(0.93); }
+}
+
+@keyframes ambientDrift2 {
+  0% { transform: translate(0%, 0%) scale(0.97); }
+  100% { transform: translate(6%, -8%) scale(1.07); }
+}
+
+@keyframes ambientDrift3 {
+  0% { transform: translate(0%, 0%) scale(1.03); }
+  100% { transform: translate(-8%, -5%) scale(0.95); }
+}

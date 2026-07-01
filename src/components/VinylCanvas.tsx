@@ -9,7 +9,10 @@ interface VinylCanvasProps {
 }
 
 export const VinylCanvas = ({ track, isPlaying, settings, isFullscreen, controls }: VinylCanvasProps) => {
-    const duration = settings.rotationSpeed === 'slow' ? '24s' : settings.rotationSpeed === 'fast' ? '9s' : '15s';
+    const duration =
+        settings.rotationSpeed === 'perfect slow' ? '40s' :
+        settings.rotationSpeed === 'slow' ? '24s' :
+        settings.rotationSpeed === 'fast' ? '9s' : '15s';
 
     const thumbnailUrl = track ? `https://img.youtube.com/vi/${track.youtubeId}/maxresdefault.jpg` : null;
     const sourceUrl = track ? `https://www.youtube.com/watch?v=${track.youtubeId}` : null;
