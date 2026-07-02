@@ -98,12 +98,24 @@ export default function App() {
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [replayCount, setReplayCount] = useState<number>(0);
 
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [seekTarget, setSeekTarget] = useState<number | null>(null);
+  const isSeekingRef = useRef(false);
+  const seekDisplayRef = useRef(0);
+
   const isLoopingRef = useRef(isLooping);
   const isShuffleRef = useRef(isShuffle);
   const tracksRef = useRef(tracks);
   useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
+
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    seekDisplayRef.current = 0;
+  }, [currentIndex]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -326,6 +338,42 @@ export default function App() {
     }
   };
 
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const progressBar = (
+    <div className="w-full flex items-center gap-3 px-1">
+      <span className="text-xs tabular-nums text-neutral-400 w-7 text-right shrink-0">
+        {formatTime(isSeekingRef.current ? seekDisplayRef.current : currentTime)}
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={Math.max(Math.floor(duration), 1)}
+        step={1}
+        value={Math.floor(isSeekingRef.current ? seekDisplayRef.current : currentTime)}
+        onPointerDown={() => { isSeekingRef.current = true; }}
+        onPointerUp={(e) => {
+          const v = Number((e.target as HTMLInputElement).value);
+          setSeekTarget(v);
+          isSeekingRef.current = false;
+        }}
+        onChange={(e) => {
+          seekDisplayRef.current = Number(e.target.value);
+          setCurrentTime(seekDisplayRef.current);
+        }}
+        className="flex-1 accent-black dark:accent-white cursor-pointer"
+        style={{ height: '3px' }}
+      />
+      <span className="text-xs tabular-nums text-neutral-400 w-7 shrink-0">
+        {duration > 0 ? formatTime(duration) : '--:--'}
+      </span>
+    </div>
+  );
+
   const activeIconStyleDark = settings.theme === 'dark'
     ? { backgroundColor: '#fff', color: '#000' }
     : { backgroundColor: '#000', color: '#fff' };
@@ -412,6 +460,12 @@ export default function App() {
           isPlaying={isPlaying}
           volume={settings.volume}
           onTrackEnd={handleTrackEnd}
+          onTimeUpdate={(cur, dur) => {
+            if (!isSeekingRef.current) setCurrentTime(cur);
+            setDuration(dur);
+          }}
+          seekTarget={seekTarget}
+          onSeeked={() => setSeekTarget(null)}
         />
       )}
 
@@ -457,7 +511,8 @@ export default function App() {
           settings={settings}
           isFullscreen={isFullscreen}
           controls={
-            <div className="flex flex-col items-start gap-4">
+            <div className="flex flex-col items-start gap-4 w-full">
+              {progressBar}
               {transportControls}
               {volumeControl}
             </div>
@@ -665,7 +720,8 @@ export default function App() {
           </DndContext>
         </div>
 
-        <div className="flex flex-col items-center gap-3 pb-16 pt-6">
+        <div className="flex flex-col items-center gap-3 pb-16 pt-6 px-8">
+          {progressBar}
           {transportControls}
           {volumeControl}
         </div>
