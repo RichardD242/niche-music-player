@@ -1,4 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Track, PlayerSettings } from './types';
 import { loadTracks, saveTracks, loadSettings, saveSettings, extractYoutubeId } from './utils/storage';
 import { extractColors } from './utils/colors';
@@ -26,7 +41,45 @@ import {
   LayoutGrid,
   Repeat,
   Shuffle,
+  GripVertical,
 } from 'lucide-react';
+
+function SortableWrapper({
+  id,
+  children,
+}: {
+  id: string;
+  children: (
+    handleRef: (el: HTMLElement | null) => void,
+    handleProps: Record<string, unknown>,
+    isDragging: boolean
+  ) => React.ReactNode;
+}) {
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    listeners,
+    attributes,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        position: 'relative',
+        zIndex: isDragging ? 10 : 'auto',
+      }}
+    >
+      {children(setActivatorNodeRef, { ...listeners, ...attributes }, isDragging)}
+    </div>
+  );
+}
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>(loadTracks);
@@ -236,6 +289,26 @@ export default function App() {
       )
     );
     setEditingId(null);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = tracks.findIndex((t) => t.id === active.id);
+    const newIndex = tracks.findIndex((t) => t.id === over.id);
+    const reordered = arrayMove(tracks, oldIndex, newIndex);
+    setTracks(reordered);
+    if (currentIndex === oldIndex) {
+      setCurrentIndex(newIndex);
+    } else if (oldIndex < currentIndex && newIndex >= currentIndex) {
+      setCurrentIndex((p) => p - 1);
+    } else if (oldIndex > currentIndex && newIndex <= currentIndex) {
+      setCurrentIndex((p) => p + 1);
+    }
   };
 
   const handleToggleShuffle = () => {
@@ -503,74 +576,93 @@ export default function App() {
             </button>
           </form>
 
-          <div className="mt-6 space-y-1.5">
-            {tracks.map((track, idx) => (
-              <div
-                key={track.id}
-                onClick={() => {
-                  if (editingId === track.id) return;
-                  setCurrentIndex(idx);
-                  setIsPlaying(true);
-                }}
-                className={`group flex items-center justify-between rounded-full px-4 py-2.5 text-sm cursor-pointer transition ${
-                  idx === currentIndex
-                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                    : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900'
-                }`}
-              >
-                {editingId === track.id ? (
-                  <form
-                    onClick={(e) => e.stopPropagation()}
-                    onSubmit={handleSaveEdit}
-                    className="flex-1 flex items-center gap-2 rounded-full bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 px-3 py-1.5"
-                  >
-                    <input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      placeholder="title"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
-                    />
-                    <input
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="description"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
-                    />
-                    <button type="submit" className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
-                      <Check size={14} />
-                    </button>
-                    <button type="button" onClick={handleCancelEdit} className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
-                      <X size={14} />
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Music size={14} className={idx === currentIndex ? '' : 'text-neutral-400'} />
-                      <span className="truncate">{track.title}</span>
-                      {idx === currentIndex && isLooping && (
-                        <span className="text-xs shrink-0 opacity-60 font-medium">On Repeat</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
-                      <button onClick={(e) => handleStartEdit(e, track)} className="p-1">
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveTrack(track.id, idx);
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <div className="mt-6 space-y-1.5">
+                {tracks.map((track, idx) => (
+                  <SortableWrapper key={track.id} id={track.id}>
+                    {(handleRef, handleProps, isDragging) => (
+                      <div
+                        onClick={() => {
+                          if (editingId === track.id || isDragging) return;
+                          setCurrentIndex(idx);
+                          setIsPlaying(true);
                         }}
-                        className="p-1"
+                        className={`group flex items-center justify-between rounded-full px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                          idx === currentIndex
+                            ? 'bg-black text-white dark:bg-white dark:text-black'
+                            : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                        }`}
                       >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </>
-                )}
+                        {editingId === track.id ? (
+                          <form
+                            onClick={(e) => e.stopPropagation()}
+                            onSubmit={handleSaveEdit}
+                            className="flex-1 flex items-center gap-2 rounded-full bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 px-3 py-1.5"
+                          >
+                            <input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              placeholder="title"
+                              className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
+                            />
+                            <input
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              placeholder="description"
+                              className="flex-1 min-w-0 bg-transparent outline-none text-sm text-black dark:text-white"
+                            />
+                            <button type="submit" className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
+                              <Check size={14} />
+                            </button>
+                            <button type="button" onClick={handleCancelEdit} className="shrink-0 text-neutral-400 hover:text-black dark:hover:text-white transition">
+                              <X size={14} />
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <Music size={14} className={idx === currentIndex ? '' : 'text-neutral-400'} />
+                              <span className="truncate">{track.title}</span>
+                              {idx === currentIndex && isLooping && (
+                                <span className="text-xs shrink-0 opacity-60 font-medium">On Repeat</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button onClick={(e) => handleStartEdit(e, track)} className="p-1">
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveTrack(track.id, idx);
+                                  }}
+                                  className="p-1"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                              <button
+                                ref={handleRef as React.Ref<HTMLButtonElement>}
+                                {...(handleProps as React.HTMLAttributes<HTMLButtonElement>)}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`p-1 cursor-grab active:cursor-grabbing transition ${
+                                  idx === currentIndex ? 'text-white/40 hover:text-white dark:text-black/30 dark:hover:text-black' : 'text-neutral-300 hover:text-neutral-500 dark:text-neutral-600 dark:hover:text-neutral-400'
+                                }`}
+                              >
+                                <GripVertical size={14} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </SortableWrapper>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         <div className="flex flex-col items-center gap-3 pb-16 pt-6">

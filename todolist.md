@@ -87,3 +87,9 @@ i should also add basic stuff like: song counter 2nd song out 5 and on loop and 
 basic stuff done
 
 i will work on the drag and drop now
+
+the lag is starting to annoy me, i will try to find a way to reduce the fps usage
+
+more things i should add:
+
+/tutorial page for how to use it, that could be something useful ye
