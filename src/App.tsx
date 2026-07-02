@@ -24,6 +24,8 @@ import {
   Download,
   Upload,
   LayoutGrid,
+  Repeat,
+  Shuffle,
 } from 'lucide-react';
 
 export default function App() {
@@ -39,6 +41,16 @@ export default function App() {
   const [editTitle, setEditTitle] = useState<string>('');
   const [editDescription, setEditDescription] = useState<string>('');
   const [ambientColors, setAmbientColors] = useState<string[]>([]);
+  const [isLooping, setIsLooping] = useState<boolean>(false);
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const [replayCount, setReplayCount] = useState<number>(0);
+
+  const isLoopingRef = useRef(isLooping);
+  const isShuffleRef = useRef(isShuffle);
+  const tracksRef = useRef(tracks);
+  useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
+  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
+  useEffect(() => { tracksRef.current = tracks; }, [tracks]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -71,12 +83,38 @@ export default function App() {
 
   const handleNext = () => {
     if (tracks.length === 0) return;
+    if (isShuffle) {
+      setCurrentIndex(Math.floor(Math.random() * tracks.length));
+      return;
+    }
     setCurrentIndex((prev) => (prev + 1) % tracks.length);
   };
 
   const handlePrev = () => {
     if (tracks.length === 0) return;
+    if (isShuffle) {
+      setCurrentIndex(Math.floor(Math.random() * tracks.length));
+      return;
+    }
     setCurrentIndex((prev) => (prev - 1 + tracks.length) % tracks.length);
+  };
+
+  const handleTrackEnd = () => {
+    const len = tracksRef.current.length;
+    if (len === 0) return;
+    if (isLoopingRef.current) {
+      setReplayCount((c) => c + 1);
+      return;
+    }
+    if (isShuffleRef.current) {
+      setCurrentIndex((prev) => {
+        let next = Math.floor(Math.random() * len);
+        if (len > 1 && next === prev) next = (next + 1) % len;
+        return next;
+      });
+      return;
+    }
+    setCurrentIndex((prev) => (prev + 1) % len);
   };
 
   useEffect(() => {
@@ -102,7 +140,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [isPlaying, tracks, currentIndex]);
+  }, [isPlaying, tracks, currentIndex, isShuffle]);
 
   const handleAddTrack = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,7 +225,7 @@ export default function App() {
     e.stopPropagation();
     setEditingId(null);
   };
-
+  
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     setTracks(
@@ -200,8 +238,36 @@ export default function App() {
     setEditingId(null);
   };
 
+  const handleToggleShuffle = () => {
+    if (isShuffle) {
+      setIsShuffle(false);
+    } else {
+      setIsShuffle(true);
+      setIsLooping(false);
+      if (tracks.length > 1) {
+        let next = Math.floor(Math.random() * tracks.length);
+        if (next === currentIndex) next = (next + 1) % tracks.length;
+        setCurrentIndex(next);
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const activeIconStyleDark = settings.theme === 'dark'
+    ? { backgroundColor: '#fff', color: '#000' }
+    : { backgroundColor: '#000', color: '#fff' };
+
   const transportControls = (
-    <div className="flex items-center gap-6 rounded-full border border-neutral-200 dark:border-neutral-800 px-6 py-3">
+    <div className="flex items-center gap-5 rounded-full border border-neutral-200 dark:border-neutral-800 px-6 py-3">
+      <button
+        onClick={handleToggleShuffle}
+        disabled={tracks.length <= 1}
+        className="p-1.5 rounded-full transition disabled:opacity-30"
+        style={isShuffle ? activeIconStyleDark : {}}
+      >
+        <Shuffle size={15} className={isShuffle ? '' : 'text-neutral-400'} />
+      </button>
+
       <button
         onClick={handlePrev}
         disabled={tracks.length <= 1}
@@ -224,6 +290,15 @@ export default function App() {
         className="text-neutral-400 hover:text-black dark:hover:text-white transition disabled:opacity-30"
       >
         <SkipForward size={18} />
+      </button>
+
+      <button
+        onClick={() => { setIsLooping((l) => !l); setIsShuffle(false); }}
+        disabled={tracks.length === 0}
+        className="p-1.5 rounded-full transition disabled:opacity-30"
+        style={isLooping ? activeIconStyleDark : {}}
+      >
+        <Repeat size={15} className={isLooping ? '' : 'text-neutral-400'} />
       </button>
     </div>
   );
@@ -259,10 +334,11 @@ export default function App() {
 
       {currentTrack && (
         <YoutubeEngine
+          key={`${currentTrack.youtubeId}-${replayCount}`}
           youtubeId={currentTrack.youtubeId}
           isPlaying={isPlaying}
           volume={settings.volume}
-          onTrackEnd={handleNext}
+          onTrackEnd={handleTrackEnd}
         />
       )}
 
@@ -386,7 +462,12 @@ export default function App() {
 
         <div className="flex-1 flex flex-col px-8 pt-8 overflow-y-auto">
           <div className="flex items-center justify-between">
-            <span className="text-xs tracking-widest text-neutral-400">play section</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs tracking-widest text-neutral-400">play section</span>
+              {tracks.length > 0 && (
+                <span className="text-xs text-neutral-400">{currentIndex + 1} / {tracks.length}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={handleExportPlaylist}
@@ -464,11 +545,14 @@ export default function App() {
                   </form>
                 ) : (
                   <>
-                    <div className="flex items-center gap-3 truncate">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <Music size={14} className={idx === currentIndex ? '' : 'text-neutral-400'} />
                       <span className="truncate">{track.title}</span>
+                      {idx === currentIndex && isLooping && (
+                        <span className="text-xs shrink-0 opacity-60 font-medium">On Repeat</span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
                       <button onClick={(e) => handleStartEdit(e, track)} className="p-1">
                         <Pencil size={14} />
                       </button>

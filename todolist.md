@@ -67,3 +67,23 @@ to add:
 - sharing json export import would be cool
 
 - maybe i should add lyrics but thats too much with api and stuff maybe its better i go to sleep now
+
+----
+
+update:
+
+i added cool box with all of the covers so you can choose the songs if you forgot to name them
+
+json export import works
+
+for the users i want a profile system and view their playlists and so on
+
+the background colors also lag a little bit so i should someone compress the whole framerate usage
+
+for the playlist i should a drag and drop tracks function so users can rearrange their songs in the order they like
+
+i should also add basic stuff like: song counter 2nd song out 5 and on loop and shuffle and stuff like that
+
+basic stuff done
+
+i will work on the drag and drop now
